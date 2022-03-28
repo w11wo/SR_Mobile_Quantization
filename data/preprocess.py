@@ -13,7 +13,7 @@ def main():
 
     jpg_ids = list(map(get_id, glob.glob(f"{jpg_path}/*")))
     ori_ids = list(map(get_id, glob.glob(f"{ori_path}/*.jpg")))
-    ids = list(set(jpg_ids) & set(ori_ids))
+    ids = sorted(list(set(jpg_ids) & set(ori_ids)))
 
     df = pd.DataFrame({"id": ids})
     train, val = train_test_split(df, test_size=0.1, random_state=42)
