@@ -7,7 +7,7 @@ train: ~
 datasets:
   train:
     dataroot_HR: SR_Mobile_Quantization/data/train_HR
-    dataroot_LR: SR_Mobile_Quantization/data/train_LR
+    dataroot_LR: SR_Mobile_Quantization/data/train_LR/XN
     filename_path: SR_Mobile_Quantization/data/train.txt
     patch_size: 64
     batch_size: 16
@@ -16,7 +16,7 @@ datasets:
     enlarge_times: 20
   val:
     dataroot_HR: SR_Mobile_Quantization/data/train_HR
-    dataroot_LR: SR_Mobile_Quantization/data/train_LR
+    dataroot_LR: SR_Mobile_Quantization/data/train_LR/XN
     filename_path: SR_Mobile_Quantization/data/val.txt
     enlarge_times: 1
 
