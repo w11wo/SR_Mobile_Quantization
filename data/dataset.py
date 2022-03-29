@@ -125,8 +125,8 @@ class DIV2K(tf.keras.utils.Sequence):
         lr_h, lr_w = lr.shape[:2]
         hr_h, hr_w = hr.shape[:2]
 
-        lr_x = random.randint(0, lr_w - ps - 1)
-        lr_y = random.randint(0, lr_h - ps - 1)
+        lr_x = random.randint(0, max(lr_w - ps - 1, 0))
+        lr_y = random.randint(0, max(lr_h - ps - 1, 0))
         hr_x = lr_x * scale
         hr_y = lr_y * scale
 
