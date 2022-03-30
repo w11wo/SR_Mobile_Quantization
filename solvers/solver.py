@@ -117,7 +117,18 @@ class Solver:
 
     def train(self):
         if self.resume == False:
-            self.model.compile(optimizer=self.optimizer, loss=self.opt["loss"])
+            if self.opt["loss"] == "custom":
+
+                def custom_loss(y_pred, y_true):
+                    ms_ssim_loss = tf.math.reduce_mean(
+                        tf.image.ssim_multiscale(y_pred, y_true, 255)
+                    )
+                    mae_loss = tf.math.reduce_mean(tf.abs(y_true - y_pred))
+                    return (1 - ms_ssim_loss) + mae_loss
+
+                self.model.compile(optimizer=self.optimizer, loss=custom_loss)
+            else:
+                self.model.compile(optimizer=self.optimizer, loss=self.opt["loss"])
         history = self.model.fit(
             self.train_data,
             epochs=self.opt["epochs"],
