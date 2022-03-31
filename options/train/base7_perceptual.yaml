@@ -42,7 +42,7 @@ solver:
     - 360
     - 480
   lr_gamma: !!float 0.5
-  loss: mix
+  loss: perceptual
   epochs: 100
   workers: 8
   val_step: 1

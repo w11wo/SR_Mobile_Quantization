@@ -15,6 +15,7 @@ import pickle
 from tensorflow.keras.layers import Lambda, Input, InputLayer
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.applications.vgg19 import VGG19
+from tensorflow.keras.losses import Loss
 
 import tensorflow_model_optimization as tfmot
 
@@ -37,6 +38,22 @@ class NoOpQuantizeConfig(tfmot.quantization.keras.QuantizeConfig):
 
     def get_config(self):
         return {}
+
+
+class PerceptualLoss(Loss):
+    def __init__(self, output_layer=20, name="perceptual_loss"):
+        super().__init__(name=name)
+        self.vgg = VGG19(input_shape=(None, None, 3), include_top=False)
+        self.vgg_model = Model(self.vgg.input, self.vgg.layers[output_layer].output)
+
+    def call(self, y_true, y_pred):
+        mae = tf.keras.losses.MeanAbsoluteError()
+        sr_normalized = tf.keras.applications.vgg19.preprocess_input(y_pred)
+        hr_normalized = tf.keras.applications.vgg19.preprocess_input(y_true)
+        sr_features = self.vgg_model(sr_normalized)
+        hr_features = self.vgg_model(hr_normalized)
+        # perceptual loss + pixelwise loss
+        return mae(hr_features, sr_features) + mae(y_true, y_pred)
 
 
 class Solver:
@@ -118,25 +135,8 @@ class Solver:
 
     def train(self):
         if self.resume == False:
-            if self.opt["loss"] == "mix":
-                mae = tf.keras.losses.MeanAbsoluteError()
-
-                def _vgg(output_layer):
-                    vgg = VGG19(input_shape=(None, None, 3), include_top=False)
-                    return Model(vgg.input, vgg.layers[output_layer].output)
-
-                vgg = _vgg(20)
-
-                @tf.function
-                def mixed_loss(hr, sr):
-                    sr_normalized = tf.keras.applications.vgg19.preprocess_input(sr)
-                    hr_normalized = tf.keras.applications.vgg19.preprocess_input(hr)
-                    sr_features = vgg(sr_normalized)
-                    hr_features = vgg(hr_normalized)
-                    # perceptual loss + pixelwise loss
-                    return mae(hr_features, sr_features) + mae(hr, sr)
-
-                self.model.compile(optimizer=self.optimizer, loss=mixed_loss)
+            if self.opt["loss"] == "perceptual":
+                self.model.compile(optimizer=self.optimizer, loss=PerceptualLoss())
             else:
                 self.model.compile(optimizer=self.optimizer, loss=self.opt["loss"])
         history = self.model.fit(
