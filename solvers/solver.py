@@ -14,6 +14,7 @@ import pickle
 
 from tensorflow.keras.layers import Lambda, Input, InputLayer
 from tensorflow.keras.models import Model, load_model
+from tensorflow.keras.applications.vgg19 import VGG19
 
 import tensorflow_model_optimization as tfmot
 
@@ -117,7 +118,27 @@ class Solver:
 
     def train(self):
         if self.resume == False:
-            self.model.compile(optimizer=self.optimizer, loss=self.opt["loss"])
+            if self.opt["loss"] == "mix":
+                mae = tf.keras.losses.MeanAbsoluteError()
+
+                def _vgg(output_layer):
+                    vgg = VGG19(input_shape=(None, None, 3), include_top=False)
+                    return Model(vgg.input, vgg.layers[output_layer].output)
+
+                vgg = _vgg(20)
+
+                @tf.function
+                def mixed_loss(hr, sr):
+                    sr_normalized = tf.keras.applications.vgg19.preprocess_input(sr)
+                    hr_normalized = tf.keras.applications.vgg19.preprocess_input(hr)
+                    sr_features = vgg(sr_normalized)
+                    hr_features = vgg(hr_normalized)
+                    # perceptual loss + pixelwise loss
+                    return mae(hr_features, sr_features) + mae(hr, sr)
+
+                self.model.compile(optimizer=self.optimizer, loss=mixed_loss)
+            else:
+                self.model.compile(optimizer=self.optimizer, loss=self.opt["loss"])
         history = self.model.fit(
             self.train_data,
             epochs=self.opt["epochs"],
