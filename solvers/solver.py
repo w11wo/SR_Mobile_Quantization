@@ -125,8 +125,7 @@ class Solver:
                     vgg = VGG19(input_shape=(None, None, 3), include_top=False)
                     return Model(vgg.input, vgg.layers[output_layer].output)
 
-                with tf.device("/GPU:0"):
-                    vgg = _vgg(20)
+                vgg = _vgg(20)
 
                 @tf.function
                 def mixed_loss(hr, sr):
