@@ -43,7 +43,7 @@ solver:
     - 480
   lr_gamma: !!float 0.5
   loss: mix
-  epochs: 600
+  epochs: 100
   workers: 8
   val_step: 1
   resume: ~
