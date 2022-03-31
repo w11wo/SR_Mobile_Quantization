@@ -45,15 +45,15 @@ class PerceptualLoss(Loss):
         super().__init__(name=name)
         self.vgg = VGG19(input_shape=(None, None, 3), include_top=False)
         self.vgg_model = Model(self.vgg.input, self.vgg.layers[output_layer].output)
+        self.mae = tf.keras.losses.MeanAbsoluteError()
 
     def call(self, y_true, y_pred):
-        mae = tf.keras.losses.MeanAbsoluteError()
         sr_normalized = tf.keras.applications.vgg19.preprocess_input(y_pred)
         hr_normalized = tf.keras.applications.vgg19.preprocess_input(y_true)
         sr_features = self.vgg_model(sr_normalized)
         hr_features = self.vgg_model(hr_normalized)
         # perceptual loss + pixelwise loss
-        return mae(hr_features, sr_features) + mae(y_true, y_pred)
+        return self.mae(hr_features, sr_features) + self.mae(y_true, y_pred)
 
 
 class Solver:
