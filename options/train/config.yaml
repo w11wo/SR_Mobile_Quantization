@@ -42,7 +42,7 @@ solver:
     - 360
     - 480
   lr_gamma: !!float 0.5
-  loss: custom
+  loss: mix
   epochs: 600
   workers: 8
   val_step: 1
