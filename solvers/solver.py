@@ -119,13 +119,14 @@ class Solver:
     def train(self):
         if self.resume == False:
             if self.opt["loss"] == "mix":
+                mae = tf.keras.losses.MeanAbsoluteError()
 
                 def _vgg(output_layer):
                     vgg = VGG19(input_shape=(None, None, 3), include_top=False)
                     return Model(vgg.input, vgg.layers[output_layer].output)
 
-                vgg = _vgg(20)
-                mae = tf.keras.losses.MeanAbsoluteError()
+                with tf.device("/GPU:0"):
+                    vgg = _vgg(20)
 
                 @tf.function
                 def mixed_loss(hr, sr):
