@@ -41,11 +41,12 @@ class NoOpQuantizeConfig(tfmot.quantization.keras.QuantizeConfig):
 
 
 class PerceptualLoss(Loss):
-    def __init__(self, output_layer=20, name="perceptual_loss"):
+    def __init__(self, output_layer=20, alpha=0.1, name="perceptual_loss"):
         super().__init__(name=name)
         self.vgg = VGG19(input_shape=(None, None, 3), include_top=False)
         self.vgg_model = Model(self.vgg.input, self.vgg.layers[output_layer].output)
         self.mae = tf.keras.losses.MeanAbsoluteError()
+        self.alpha = alpha
 
     def call(self, y_true, y_pred):
         sr_normalized = tf.keras.applications.vgg19.preprocess_input(y_pred)
@@ -53,7 +54,9 @@ class PerceptualLoss(Loss):
         sr_features = self.vgg_model(sr_normalized)
         hr_features = self.vgg_model(hr_normalized)
         # perceptual loss + pixelwise loss
-        return self.mae(hr_features, sr_features) + self.mae(y_true, y_pred)
+        return self.mae(hr_features, sr_features) + self.alpha * self.mae(
+            y_true, y_pred
+        )
 
 
 class Solver:
@@ -120,8 +123,11 @@ class Solver:
         self.val_data = val_data
         self.writer = writer
 
-        self.optimizer = tf.keras.optimizers.Adam(lr=self.opt["lr"])
-        lr_scheduler = LearningRateScheduler(self.scheduler)
+        learning_rate_fn = tf.keras.optimizers.schedules.PolynomialDecay(
+            self.opt["lr"], len(self.train_data) * self.opt["epochs"], 0.0, power=1.0
+        )
+
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate_fn)
         epoch_end_call = Epoch_End_Callback(
             self.val_data,
             self.train_data,
@@ -131,7 +137,7 @@ class Solver:
             self.opt["val_step"],
             state=self.state,
         )
-        self.callback = [lr_scheduler, epoch_end_call]
+        self.callback = [epoch_end_call]
 
     def train(self):
         if self.resume == False:
@@ -146,12 +152,6 @@ class Solver:
             callbacks=self.callback,
             initial_epoch=self.state["current_epoch"] + 1,
         )
-
-    def scheduler(self, epoch):
-        if epoch in self.opt["lr_steps"]:
-            current_lr = K.get_value(self.model.optimizer.lr)
-            K.set_value(self.model.optimizer.lr, current_lr * self.opt["lr_gamma"])
-        return K.get_value(self.model.optimizer.lr)
 
 
 class Epoch_End_Callback(Callback):
@@ -186,19 +186,19 @@ class Epoch_End_Callback(Callback):
         psnr = round(psnr / len(self.val_data), 4)
         loss = round(logs["loss"], 4)
 
+        self.model.save(
+            self.ckp_path, overwrite=True, include_optimizer=True, save_format="tf"
+        )
+
         # save best status
         if psnr >= self.best_psnr:
             self.best_psnr = psnr
             self.best_epoch = epoch
-            self.model.save(
-                self.ckp_path, overwrite=True, include_optimizer=True, save_format="tf"
-            )
             state = {
                 "current_epoch": epoch,
                 "best_epoch": self.best_epoch,
                 "best_psnr": self.best_psnr,
             }
-
             with open(self.state_path, "wb") as f:
                 pickle.dump(state, f)
 

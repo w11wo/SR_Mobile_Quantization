@@ -36,12 +36,6 @@ paths:
 # optimizer
 solver:
   lr: !!float 1e-3
-  lr_steps:
-    - 120
-    - 240
-    - 360
-    - 480
-  lr_gamma: !!float 0.5
   loss: perceptual
   epochs: 100
   workers: 8
