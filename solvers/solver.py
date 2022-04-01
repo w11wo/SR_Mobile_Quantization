@@ -203,16 +203,13 @@ class Epoch_End_Callback(Callback):
                 pickle.dump(state, f)
 
         self.lg.info(
-            "Epoch: {:4} | PSNR: {:.2f} | Loss: {:.4f} | Best_PSNR: {:.2f} in Epoch [{}]".format(
-<<<<<<< HEAD
+            "Epoch: {:4} | PSNR: {:.2f} | Loss: {:.4f} | lr: {:.2e} | Best_PSNR: {:.2f} in Epoch [{}]".format(
                 epoch,
                 psnr,
                 loss,
+                K.get_value(self.model.optimizer.lr),
                 self.best_psnr,
                 self.best_epoch,
-=======
-                epoch, psnr, loss, self.best_psnr, self.best_epoch,
->>>>>>> 127093987d514c21dd0fa415501e72550c5a891e
             )
         )
 
