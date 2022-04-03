@@ -41,6 +41,6 @@ solver:
   workers: 8
   val_step: 1
   resume: true
-  resume_path: ./experiment/qsrm_x4/
+  resume_path: ./experiment/qsrm_x4/best_status
   qat: ~
   qat_path: ~
