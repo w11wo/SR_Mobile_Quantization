@@ -51,11 +51,11 @@ class PerceptualLoss(Loss):
     def call(self, y_true, y_pred):
         sr_normalized = tf.keras.applications.vgg19.preprocess_input(y_pred)
         hr_normalized = tf.keras.applications.vgg19.preprocess_input(y_true)
-        sr_features = self.vgg_model(sr_normalized) / 12.75
-        hr_features = self.vgg_model(hr_normalized) / 12.75
+        sr_features = self.vgg_model(sr_normalized)
+        hr_features = self.vgg_model(hr_normalized)
         perceptual_loss = self.mse(hr_features, sr_features)
         pixelwise_loss = self.mae(y_true, y_pred)
-        return perceptual_loss + pixelwise_loss * 0.001
+        return perceptual_loss + pixelwise_loss
 
 
 class Solver:
