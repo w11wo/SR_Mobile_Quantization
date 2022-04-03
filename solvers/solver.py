@@ -41,22 +41,19 @@ class NoOpQuantizeConfig(tfmot.quantization.keras.QuantizeConfig):
 
 
 class PerceptualLoss(Loss):
-    def __init__(self, output_layer=20, alpha=0.1, name="perceptual_loss"):
+    def __init__(self, output_layer=20, name="perceptual_loss"):
         super().__init__(name=name)
         self.vgg = VGG19(input_shape=(None, None, 3), include_top=False)
         self.vgg_model = Model(self.vgg.input, self.vgg.layers[output_layer].output)
-        self.mae = tf.keras.losses.MeanAbsoluteError()
-        self.alpha = alpha
+        self.mse = tf.keras.losses.MeanSquaredError()
 
     def call(self, y_true, y_pred):
         sr_normalized = tf.keras.applications.vgg19.preprocess_input(y_pred)
         hr_normalized = tf.keras.applications.vgg19.preprocess_input(y_true)
-        sr_features = self.vgg_model(sr_normalized)
-        hr_features = self.vgg_model(hr_normalized)
-        # perceptual loss + pixelwise loss
-        return self.mae(hr_features, sr_features) + self.alpha * self.mae(
-            y_true, y_pred
-        )
+        sr_features = self.vgg_model(sr_normalized) / 12.75
+        hr_features = self.vgg_model(hr_normalized) / 12.75
+        # perceptual loss
+        return self.mse(hr_features, sr_features)
 
 
 class Solver:
@@ -80,9 +77,9 @@ class Solver:
             self.model = tf.keras.models.load_model(
                 self.opt["resume_path"], custom_objects={"tf": tf}
             )
-            with open(args["paths"]["state"], "rb") as f:
-                self.state = pickle.load(f)
-                self.lg.info("Load checkpoint state successfully!")
+            # with open(args["paths"]["state"], "rb") as f:
+            #     self.state = pickle.load(f)
+            #     self.lg.info("Load checkpoint state successfully!")
 
         elif self.qat:  # Quantization-Aware Training
             # load pretrain model
@@ -140,11 +137,12 @@ class Solver:
         self.callback = [epoch_end_call]
 
     def train(self):
-        if self.resume == False:
-            if self.opt["loss"] == "perceptual":
-                self.model.compile(optimizer=self.optimizer, loss=PerceptualLoss())
-            else:
-                self.model.compile(optimizer=self.optimizer, loss=self.opt["loss"])
+        # if self.resume == False:
+        if self.opt["loss"] == "perceptual":
+            self.model.compile(optimizer=self.optimizer, loss=PerceptualLoss())
+        else:
+            self.model.compile(optimizer=self.optimizer, loss=self.opt["loss"])
+
         history = self.model.fit(
             self.train_data,
             epochs=self.opt["epochs"],
@@ -203,13 +201,8 @@ class Epoch_End_Callback(Callback):
                 pickle.dump(state, f)
 
         self.lg.info(
-            "Epoch: {:4} | PSNR: {:.2f} | Loss: {:.4f} | lr: {:.2e} | Best_PSNR: {:.2f} in Epoch [{}]".format(
-                epoch,
-                psnr,
-                loss,
-                K.get_value(self.model.optimizer.lr),
-                self.best_psnr,
-                self.best_epoch,
+            "Epoch: {:4} | PSNR: {:.2f} | Loss: {:.4f} | Best_PSNR: {:.2f} in Epoch [{}]".format(
+                epoch, psnr, loss, self.best_psnr, self.best_epoch,
             )
         )
 

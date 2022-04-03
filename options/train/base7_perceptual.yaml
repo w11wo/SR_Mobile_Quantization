@@ -35,12 +35,12 @@ paths:
 
 # optimizer
 solver:
-  lr: !!float 1e-3
+  lr: !!float 1e-4
   loss: perceptual
   epochs: 100
   workers: 8
   val_step: 1
-  resume: ~
-  resume_path: ~
+  resume: true
+  resume_path: ./experiment/qsrm_x4/
   qat: ~
   qat_path: ~
