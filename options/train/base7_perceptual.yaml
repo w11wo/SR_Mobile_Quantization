@@ -35,7 +35,7 @@ paths:
 
 # optimizer
 solver:
-  lr: !!float 1e-4
+  lr: !!float 1e-3
   lr_steps:
     - 50
     - 100
