@@ -79,9 +79,9 @@ class Solver:
             self.model = tf.keras.models.load_model(
                 self.opt["resume_path"], custom_objects={"tf": tf}
             )
-            # with open(args["paths"]["state"], "rb") as f:
-            #     self.state = pickle.load(f)
-            #     self.lg.info("Load checkpoint state successfully!")
+            with open(args["paths"]["state"], "rb") as f:
+                self.state = pickle.load(f)
+                self.lg.info("Load checkpoint state successfully!")
 
         elif self.qat:  # Quantization-Aware Training
             # load pretrain model
@@ -122,11 +122,13 @@ class Solver:
         self.val_data = val_data
         self.writer = writer
 
-        learning_rate_fn = tf.keras.optimizers.schedules.PolynomialDecay(
-            self.opt["lr"], len(self.train_data) * self.opt["epochs"], 0.0, power=1.0
-        )
+        # learning_rate_fn = tf.keras.optimizers.schedules.PolynomialDecay(
+        #     self.opt["lr"], len(self.train_data) * self.opt["epochs"], 0.0, power=1.0
+        # )
 
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate_fn)
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.opt["lr"])
+        lr_scheduler = LearningRateScheduler(self.scheduler)
+
         epoch_end_call = Epoch_End_Callback(
             self.val_data,
             self.train_data,
@@ -136,14 +138,14 @@ class Solver:
             self.opt["val_step"],
             state=self.state,
         )
-        self.callback = [epoch_end_call]
+        self.callback = [lr_scheduler, epoch_end_call]
 
     def train(self):
-        # if self.resume == False:
-        if self.opt["loss"] == "perceptual":
-            self.model.compile(optimizer=self.optimizer, loss=PerceptualLoss())
-        else:
-            self.model.compile(optimizer=self.optimizer, loss=self.opt["loss"])
+        if self.resume == False:
+            if self.opt["loss"] == "perceptual":
+                self.model.compile(optimizer=self.optimizer, loss=PerceptualLoss())
+            else:
+                self.model.compile(optimizer=self.optimizer, loss=self.opt["loss"])
 
         history = self.model.fit(
             self.train_data,
@@ -152,6 +154,12 @@ class Solver:
             callbacks=self.callback,
             initial_epoch=self.state["current_epoch"] + 1,
         )
+
+    def scheduler(self, epoch):
+        if epoch in self.opt["lr_steps"]:
+            current_lr = K.get_value(self.model.optimizer.lr)
+            K.set_value(self.model.optimizer.lr, current_lr * self.opt["lr_gamma"])
+        return K.get_value(self.model.optimizer.lr)
 
 
 class Epoch_End_Callback(Callback):

@@ -25,7 +25,7 @@ networks:
   which_model: base7
   scale: 4
   in_channels: 3
-  num_fea: 32
+  num_fea: 28
   m: 4
   out_channels: 3
 
@@ -36,11 +36,15 @@ paths:
 # optimizer
 solver:
   lr: !!float 1e-4
+  lr_steps:
+    - 50
+    - 100
+  lr_gamma: !!float 0.5
   loss: perceptual
-  epochs: 100
+  epochs: 150
   workers: 8
   val_step: 1
-  resume: true
-  resume_path: ./experiment/qsrm_x4/best_status
+  resume: ~
+  resume_path: ~
   qat: ~
   qat_path: ~
